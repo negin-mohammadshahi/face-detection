@@ -1,0 +1,77 @@
+import cv2
+import os
+from datetime import datetime
+
+save_folder = "captured_photos"
+os.makedirs(save_folder, exist_ok=True)
+
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+cap = cv2.VideoCapture(0)
+
+print("Camera started! Press S to save a photo, Q to quit.")
+
+known_faces = []
+MAX_DIST = 80
+next_person_number = 1
+
+
+def get_center(rect):
+    x, y, w, h = rect
+    return (x + w // 2, y + h // 2)
+
+
+def find_matching_known_face(center):
+    best_idx = None
+    best_dist = MAX_DIST
+    for i, kf in enumerate(known_faces):
+        d = ((center[0] - kf['center'][0]) ** 2 + (center[1] - kf['center'][1]) ** 2) ** 0.5
+        if d < best_dist:
+            best_dist = d
+            best_idx = i
+    return best_idx
+
+
+cv2.namedWindow('Face Detection')
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+
+    for (x, y, w, h) in faces:
+        center = get_center((x, y, w, h))
+        idx = find_matching_known_face(center)
+
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+        if idx is not None:
+            known_faces[idx]['center'] = center
+            label = known_faces[idx]['name']
+        else:
+            label = f"Person {next_person_number}"
+            known_faces.append({'center': center, 'name': label})
+            next_person_number += 1
+
+        cv2.putText(frame, label, (x, max(y - 10, 0)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+
+    cv2.putText(frame, f"Faces: {len(faces)}", (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+
+    cv2.imshow('Face Detection', frame)
+
+    key = cv2.waitKey(1) & 0xFF
+
+    if key == ord('s') or key == ord('S'):
+        filename = os.path.join(save_folder, f"photo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
+        cv2.imwrite(filename, frame)
+        print(f"Saved: {filename}")
+
+    if key == ord('q') or key == ord('Q') or key == 27:
+        break
+
+cap.release()
+cv2.destroyAllWindows()
