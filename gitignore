@@ -1,0 +1,14 @@
+# Captured photos (generated at runtime, not part of the source)
+captured_photos/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# OS-specific
+.DS_Store
+Thumbs.db
